@@ -1,7 +1,13 @@
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const clientIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
+    const clientIpNumber = ipToNumber(clientIp);
+    const { country_iso_code: clientIpCountry } = await env.geolite2_country.prepare(
+      'select country_iso_code from merged_ipv4_data where network_start <= ?1 and network_end >= ?1')
+      .bind(clientIpNumber)
+      .first();
+    console.log(clientIpCountry)
 
     let queryData;
 
@@ -85,4 +91,11 @@ function combineQueryData(headerAndQuestion, optRecord) {
   newQueryData.set(headerAndQuestion, 0);
   newQueryData.set(optRecord, headerAndQuestion.length);
   return newQueryData;
+}
+
+// Convert IP to Number
+function ipToNumber(ip) {
+  return ip.split('.').reduce((int, octet) => {
+    return (int << 8) + parseInt(octet, 10);
+  }, 0) >>> 0; // Ensures the result is an unsigned 32-bit integer
 }

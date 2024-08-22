@@ -3,11 +3,13 @@ export default {
     const url = new URL(request.url);
     const clientIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
     const clientIpNumber = ipToNumber(clientIp);
+    const start = Date.now()
     const { country_iso_code: clientIpCountry } = await env.geolite2_country.prepare(
-      'select country_iso_code from merged_ipv4_data where network_start <= ?1 and network_end >= ?1')
+      'select country_iso_code from merged_ipv4_data where network_start <= ?1 and network_end >= ?1 limit 1')
       .bind(clientIpNumber)
       .first();
-    console.log(clientIpCountry)
+    console.log(Date.now() - start)
+    console.log(clientIpCountry, clientIpNumber)
 
     let queryData;
 

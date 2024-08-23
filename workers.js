@@ -1,15 +1,11 @@
+let geolite2_country = null;
+const dohUrl = 'https://dns.google/dns-query';
+
 export default {
   async fetch(request, env, ctx) {
+    geolite2_country ??= env.geolite2_country;
     const url = new URL(request.url);
     const clientIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
-    const clientIpNumber = ipToNumber(clientIp);
-    const start = Date.now()
-    const { country_iso_code: clientIpCountry } = await env.geolite2_country.prepare(
-      'select country_iso_code from merged_ipv4_data where network_start <= ?1 and network_end >= ?1 limit 1')
-      .bind(clientIpNumber)
-      .first();
-    console.log(Date.now() - start)
-    console.log(clientIpCountry, clientIpNumber)
 
     let queryData;
 
@@ -31,6 +27,32 @@ export default {
       return new Response('Unsupported method', { status: 405 });
     }
 
+    const response = await queryDns(queryData, clientIp);
+
+    const buffer = await response.arrayBuffer()
+    const dnsResponse = parseDnsResponse(buffer)
+    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0])) {
+      return new Response(buffer, response);
+    }
+    const [requestInfo, responseInfo] = await Promise.all([
+      await ip2country(clientIp),
+      await ip2country(dnsResponse.answers[0])
+    ])
+    console.log(`Request CIDR: ${requestInfo.network} - Country: ${requestInfo.country_iso_code}; Response CIDR: ${responseInfo.network} - Country: ${responseInfo.country_iso_code}`)
+    if (requestInfo.country_iso_code === responseInfo.country_iso_code) {
+      return new Response(buffer, response);
+    }
+
+    const connectingIp = request.headers.get('CF-Connecting-IP')
+    console.log(`Connecting IP: ${connectingIp}`)
+    const backupResponse = await queryDns(queryData, connectingIp);
+    return new Response(backupResponse.body, backupResponse);
+  }
+};
+
+async function queryDns(queryData, clientIp) {
+  let newQueryData = queryData;
+  if (clientIp) {
     // Extract DNS Header and Question Section
     const [headerAndQuestion, questionEnd] = extractHeaderAndQuestion(queryData);
 
@@ -38,20 +60,19 @@ export default {
     const optRecord = createOptRecord(clientIp);
 
     // Combine the header, question, and new OPT record to create a new query
-    const newQueryData = combineQueryData(headerAndQuestion, optRecord);
-
-    // Forward the modified query to Google DNS
-    const response = await fetch('https://dns.google/dns-query', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/dns-message'
-      },
-      body: newQueryData
-    });
-
-    return new Response(response.body, response);
+    newQueryData = combineQueryData(headerAndQuestion, optRecord);
   }
-};
+
+  // Forward the modified query to Google DNS
+  const response = await fetch(dohUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/dns-message'
+    },
+    body: newQueryData
+  });
+  return response
+}
 
 function extractHeaderAndQuestion(data) {
   let offset = 12; // DNS header is 12 bytes
@@ -92,12 +113,84 @@ function combineQueryData(headerAndQuestion, optRecord) {
   const newQueryData = new Uint8Array(headerAndQuestion.length + optRecord.length);
   newQueryData.set(headerAndQuestion, 0);
   newQueryData.set(optRecord, headerAndQuestion.length);
+  // https://en.wikipedia.org/wiki/Domain_Name_System#DNS_message_format
+  // Incrementing the QDCOUNT field (offset 3) to 32, signaling an additional record in the question section.
+  // Setting the ARCOUNT field (offset 11) to 1, indicating one additional record in the message.
+  newQueryData.set([32], 3);
+  newQueryData.set([1], 11);
   return newQueryData;
 }
 
 // Convert IP to Number
-function ipToNumber(ip) {
+function ip2number(ip) {
   return ip.split('.').reduce((int, octet) => {
     return (int << 8) + parseInt(octet, 10);
   }, 0) >>> 0; // Ensures the result is an unsigned 32-bit integer
+}
+
+async function ip2country(ip) {
+  const ipNumber = ip2number(ip);
+  const result = await geolite2_country.prepare(
+    'select country_iso_code, network from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
+    .bind(ipNumber)
+    .first();
+  return result;
+}
+
+function parseDnsResponse(buffer) {
+  const dnsResponse = new Uint8Array(buffer);
+  let offset = 0;
+
+  // Parse the header (first 12 bytes)
+  const id = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+  const flags = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+  const qdCount = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+  const anCount = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+  const nsCount = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+  const arCount = (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+
+  // Skip the question section (name + type + class)
+  for (let i = 0; i < qdCount; i++) {
+    while (dnsResponse[offset] !== 0)
+      offset++;
+    // Skip domain name
+    offset += 5;
+    // Skip null byte, type, and class
+  }
+
+  // Parse the answer section
+  const answers = [];
+  for (let i = 0; i < anCount; i++) {
+    const name = dnsResponse[offset++] << 8 | dnsResponse[offset++];
+    const type = dnsResponse[offset++] << 8 | dnsResponse[offset++];
+    const dnsClass = dnsResponse[offset++] << 8 | dnsResponse[offset++];
+    const ttl = (dnsResponse[offset++] << 24) | (dnsResponse[offset++] << 16) | (dnsResponse[offset++] << 8) | dnsResponse[offset++];
+    const dataLen = dnsResponse[offset++] << 8 | dnsResponse[offset++];
+
+    if (type === 1) {
+      // A record (IPv4 address)
+      const ip = [];
+      for (let j = 0; j < dataLen; j++) {
+        ip.push(dnsResponse[offset++]);
+      }
+      answers.push(ip.join('.'));
+    } else {
+      // Skip other types
+      offset += dataLen;
+    }
+  }
+
+  return {
+    id,
+    flags,
+    qdCount,
+    anCount,
+    nsCount,
+    arCount,
+    answers
+  };
+}
+
+function isIPv4(ip) {
+  return ip.split('.').length === 4;
 }

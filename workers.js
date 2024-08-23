@@ -27,24 +27,32 @@ export default {
       return new Response('Unsupported method', { status: 405 });
     }
 
+
+    const queryUpstreamStart = Date.now();
     const response = await queryDns(queryData, clientIp);
+    const queryUpstreamEnd = Date.now();
 
     const buffer = await response.arrayBuffer()
     const dnsResponse = parseDnsResponse(buffer)
     if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0])) {
       return new Response(buffer, response);
     }
+    const queryCountryInfoStart = Date.now();
     const [requestInfo, responseInfo] = await Promise.all([
       await ip2country(clientIp),
       await ip2country(dnsResponse.answers[0])
     ])
-    console.log(`Request CIDR: ${requestInfo.network} - Country: ${requestInfo.country_iso_code}; Response CIDR: ${responseInfo.network} - Country: ${responseInfo.country_iso_code}`)
+    const queryCountryInfoEnd = Date.now();
+
+    console.log(`Response CIDR: ${responseInfo.network}, ${responseInfo.country_iso_code}`)
+    console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
+    console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
+    
     if (requestInfo.country_iso_code === responseInfo.country_iso_code) {
       return new Response(buffer, response);
     }
 
     let connectingIp = request.headers.get('CF-Connecting-IP')
-    console.log(`Connecting IP: ${connectingIp}`)
     connectingIp = isIPv4(connectingIp) ? connectingIp : null;
     const backupResponse = await queryDns(queryData, connectingIp);
     return new Response(backupResponse.body, backupResponse);

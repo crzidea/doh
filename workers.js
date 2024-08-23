@@ -43,8 +43,9 @@ export default {
       return new Response(buffer, response);
     }
 
-    const connectingIp = request.headers.get('CF-Connecting-IP')
+    let connectingIp = request.headers.get('CF-Connecting-IP')
     console.log(`Connecting IP: ${connectingIp}`)
+    connectingIp = isIPv4(connectingIp) ? connectingIp : null;
     const backupResponse = await queryDns(queryData, connectingIp);
     return new Response(backupResponse.body, backupResponse);
   }

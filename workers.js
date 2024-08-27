@@ -43,18 +43,19 @@ export default {
     }
 
     const queryCountryInfoStart = Date.now();
-    const responseInfo = await ip2country(dnsResponse.answers[0])
+    const responseIpSample = dnsResponse.answers[0];
+    const responseIpCountry = await ip2country(responseIpSample)
     const queryCountryInfoEnd = Date.now();
 
-    console.log(`Response CIDR: ${responseInfo.network}, ${responseInfo.country_iso_code}`)
+    console.log(`Response Sample: ${responseIpSample}, ${responseIpCountry}`)
     console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
     console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
 
-    if (connectingIpCountry === responseInfo.country_iso_code) {
+    if (connectingIpCountry === responseIpCountry) {
       return new Response(buffer, response);
+    } else {
+      return new Response(alternativeResponse.body, alternativeResponse);
     }
-
-    return new Response(alternativeResponse.body, alternativeResponse);
   }
 };
 
@@ -187,12 +188,15 @@ function ip2number(ip) {
 }
 
 async function ip2country(ip) {
-  const ipNumber = ip2number(ip);
-  const result = await geolite2_country.prepare(
-    'select country_iso_code, network from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
-    .bind(ipNumber)
-    .first();
-  return result;
+  // const ipNumber = ip2number(ip);
+  // const {country_iso_code} = await geolite2_country.prepare(
+  //   'select country_iso_code from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
+  //   .bind(ipNumber)
+  //   .first();
+  // return country_iso_code;
+  const response = await fetch(`https://api.iplocation.net/?cmd=ip-country&ip=${ip}`)
+  const json = await response.json()
+  return json.country_code2
 }
 
 function parseDnsResponse(buffer) {

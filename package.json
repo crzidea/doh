@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev --remote --local-protocol https",
+    "dev": "wrangler dev --remote --local-protocol https --env dev",
     "start": "wrangler dev"
   },
   "devDependencies": {

@@ -5,9 +5,9 @@ export default {
   async fetch(request, env, ctx) {
     geolite2_country ??= env.geolite2_country;
     const url = new URL(request.url);
-    const clientIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
-    let connectingIp = request.headers.get('CF-Connecting-IP')
-    connectingIp = isIPv4(connectingIp) ? connectingIp : null;
+    const connectingIp = env.connectingIp || request.headers.get('cf-connecting-ip')
+    const connectingIpCountry = env.connectingIpCountry || request.headers.get('cf-ipcountry')
+    const alternativeIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
 
     let queryData;
 
@@ -29,9 +29,11 @@ export default {
       return new Response('Unsupported method', { status: 405 });
     }
 
-
     const queryUpstreamStart = Date.now();
-    const response = await queryDns(queryData, connectingIp);
+    const [response, alternativeResponse] = await Promise.all([
+      queryDns(queryData, connectingIp),
+      queryDns(queryData, alternativeIp)
+    ]);
     const queryUpstreamEnd = Date.now();
 
     const buffer = await response.arrayBuffer()
@@ -41,22 +43,18 @@ export default {
     }
 
     const queryCountryInfoStart = Date.now();
-    const [requestInfo, responseInfo] = await Promise.all([
-      await ip2country(connectingIp),
-      await ip2country(dnsResponse.answers[0])
-    ])
+    const responseInfo = await ip2country(dnsResponse.answers[0])
     const queryCountryInfoEnd = Date.now();
 
     console.log(`Response CIDR: ${responseInfo.network}, ${responseInfo.country_iso_code}`)
     console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
     console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
 
-    if (requestInfo.country_iso_code === responseInfo.country_iso_code) {
+    if (connectingIpCountry === responseInfo.country_iso_code) {
       return new Response(buffer, response);
     }
 
-    const backupResponse = await queryDns(queryData, clientIp);
-    return new Response(backupResponse.body, backupResponse);
+    return new Response(alternativeResponse.body, alternativeResponse);
   }
 };
 
@@ -103,9 +101,24 @@ function extractHeaderAndQuestion(data) {
 }
 
 function createOptRecord(clientIp) {
-  // Convert client IP to bytes
-  const ipParts = clientIp.split('.').map(part => parseInt(part, 10));
-  const ecsData = [0, 8, 0, 8, 0, 1, 32, 0, ...ipParts];
+  let ecsData;
+  let family;
+
+  if (isIPv4(clientIp)) {
+    // Convert client IP to bytes
+    const ipParts = clientIp.split('.').map(part => parseInt(part, 10));
+    family = 1; // IPv4
+    const prefixLength = 32; // Adjust the prefix length as needed
+    ecsData = [0, 8, 0, 8, 0, family, prefixLength, 0, ...ipParts];
+  } else if (isIPv6(clientIp)) {
+    // Convert client IP to bytes
+    const ipParts = ipv6ToBytes(clientIp);
+    family = 2; // IPv6
+    const prefixLength = 128; // Adjust the prefix length as needed
+    ecsData = [0, 8, 0, 20, 0, family, prefixLength, 0, ...ipParts];
+  } else {
+    throw new Error('Invalid IP address');
+  }
 
   // Construct the OPT record
   return new Uint8Array([
@@ -116,6 +129,41 @@ function createOptRecord(clientIp) {
     0, ecsData.length, // RD Length
     ...ecsData
   ]);
+}
+
+function isIPv4(ip) {
+  return ip.split('.').length === 4;
+}
+
+function isIPv6(ip) {
+  return ip.split(':').length > 2; // At least 3 groups separated by colons
+}
+
+function ipv6ToBytes(ipv6) {
+  // Split the IPv6 address into segments
+  let segments = ipv6.split(':');
+
+  // Expand shorthand notation (e.g., '::')
+  let expandedSegments = [];
+  for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === '') {
+          // Insert zero segments for "::"
+          let zeroSegments = 8 - (segments.length - 1);
+          expandedSegments.push(...new Array(zeroSegments).fill('0000'));
+      } else {
+          expandedSegments.push(segments[i]);
+      }
+  }
+
+  // Convert each segment into a 16-bit number and then into 8-bit numbers
+  let bytes = [];
+  for (let segment of expandedSegments) {
+      let segmentValue = parseInt(segment, 16);
+      bytes.push((segmentValue >> 8) & 0xff); // High byte
+      bytes.push(segmentValue & 0xff);        // Low byte
+  }
+
+  return bytes;
 }
 
 function combineQueryData(headerAndQuestion, optRecord) {
@@ -199,8 +247,4 @@ function parseDnsResponse(buffer) {
     arCount,
     answers
   };
-}
-
-function isIPv4(ip) {
-  return ip.split('.').length === 4;
 }

@@ -6,6 +6,8 @@ export default {
     geolite2_country ??= env.geolite2_country;
     const url = new URL(request.url);
     const clientIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
+    let connectingIp = request.headers.get('CF-Connecting-IP')
+    connectingIp = isIPv4(connectingIp) ? connectingIp : null;
 
     let queryData;
 
@@ -29,17 +31,18 @@ export default {
 
 
     const queryUpstreamStart = Date.now();
-    const response = await queryDns(queryData, clientIp);
+    const response = await queryDns(queryData, connectingIp);
     const queryUpstreamEnd = Date.now();
 
     const buffer = await response.arrayBuffer()
     const dnsResponse = parseDnsResponse(buffer)
-    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0])) {
+    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0] || !connectingIp)) {
       return new Response(buffer, response);
     }
+
     const queryCountryInfoStart = Date.now();
     const [requestInfo, responseInfo] = await Promise.all([
-      await ip2country(clientIp),
+      await ip2country(connectingIp),
       await ip2country(dnsResponse.answers[0])
     ])
     const queryCountryInfoEnd = Date.now();
@@ -47,14 +50,12 @@ export default {
     console.log(`Response CIDR: ${responseInfo.network}, ${responseInfo.country_iso_code}`)
     console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
     console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
-    
+
     if (requestInfo.country_iso_code === responseInfo.country_iso_code) {
       return new Response(buffer, response);
     }
 
-    let connectingIp = request.headers.get('CF-Connecting-IP')
-    connectingIp = isIPv4(connectingIp) ? connectingIp : null;
-    const backupResponse = await queryDns(queryData, connectingIp);
+    const backupResponse = await queryDns(queryData, clientIp);
     return new Response(backupResponse.body, backupResponse);
   }
 };

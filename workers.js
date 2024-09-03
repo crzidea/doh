@@ -1,9 +1,11 @@
 let geolite2_country = null;
+let CLOUDFLARE_API_TOKEN = null;
 const dohUrl = 'https://dns.google/dns-query';
 
 export default {
   async fetch(request, env, ctx) {
     geolite2_country ??= env.geolite2_country;
+    CLOUDFLARE_API_TOKEN ??= env.CLOUDFLARE_API_TOKEN;
     const url = new URL(request.url);
     const connectingIp = env.connectingIp || request.headers.get('cf-connecting-ip')
     const connectingIpCountry = env.connectingIpCountry || request.headers.get('cf-ipcountry')
@@ -188,15 +190,40 @@ function ip2number(ip) {
 }
 
 async function ip2country(ip) {
-  // const ipNumber = ip2number(ip);
-  // const {country_iso_code} = await geolite2_country.prepare(
-  //   'select country_iso_code from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
-  //   .bind(ipNumber)
-  //   .first();
-  // return country_iso_code;
+  return ip2countryWithD1(ip)
+  // return ip2countryWithIplocationNet(ip)
+  // return ip2countryWithCloudflareRadar(ip)
+}
+
+async function ip2countryWithD1(ip) {
+  const ipNumber = ip2number(ip);
+  const {country_iso_code} = await geolite2_country.prepare(
+    'select country_iso_code from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
+    .bind(ipNumber)
+    .first();
+  return country_iso_code;
+}
+
+// Unstable
+async function ip2countryWithIplocationNet(ip) {
   const response = await fetch(`https://api.iplocation.net/?cmd=ip-country&ip=${ip}`)
   const json = await response.json()
   return json.country_code2
+}
+
+// Too slow
+async function ip2countryWithCloudflareRadar(ip) {
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/radar/entities/ip?ip=${ip}`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`
+      }
+    }
+  )
+  const json = await response.json()
+  return json.result.ip.location
 }
 
 function parseDnsResponse(buffer) {

@@ -7,9 +7,19 @@ export default {
     geolite2_country ??= env.geolite2_country;
     CLOUDFLARE_API_TOKEN ??= env.CLOUDFLARE_API_TOKEN;
     const url = new URL(request.url);
-    const connectingIp = env.connectingIp || request.headers.get('cf-connecting-ip')
-    const connectingIpCountry = env.connectingIpCountry || request.headers.get('cf-ipcountry')
-    const alternativeIp = url.pathname.substring(1).split('/')[0]; // Extract IP from path
+    // Example: /client-ip/223.5.5.5/client-country/CN/alternative-ip/8.8.8.8/dns-query
+    // Extracted:
+    //  clientIp: 223.5.5.5
+    //  clientCountry: CN
+    //  alternativeIp: 8.8.8.8
+    const params = url.pathname.substring(1).split('/');
+    const clientIp = env.connectingIp ||
+      extractParam(params, 'client-ip') ||
+      request.headers.get('cf-connecting-ip')
+    const clientCountry = env.connectingIpCountry ||
+      extractParam(params, 'client-country') ||
+      request.headers.get('cf-ipcountry')
+    const alternativeIp = extractParam(params, 'alternative-ip') || params[0];
 
     let queryData;
 
@@ -33,14 +43,14 @@ export default {
 
     const queryUpstreamStart = Date.now();
     const [response, alternativeResponse] = await Promise.all([
-      queryDns(queryData, connectingIp),
+      queryDns(queryData, clientIp),
       queryDns(queryData, alternativeIp)
     ]);
     const queryUpstreamEnd = Date.now();
 
     const buffer = await response.arrayBuffer()
     const dnsResponse = parseDnsResponse(buffer)
-    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0] || !connectingIp)) {
+    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0] || !clientIp)) {
       return new Response(buffer, response);
     }
 
@@ -53,13 +63,21 @@ export default {
     console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
     console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
 
-    if (connectingIpCountry === responseIpCountry) {
+    if (clientCountry === responseIpCountry) {
       return new Response(buffer, response);
     } else {
       return new Response(alternativeResponse.body, alternativeResponse);
     }
   }
 };
+
+function extractParam(params, name) {
+  const index = params.indexOf(name);
+  if (~index) {
+    return params[index + 1];
+  }
+  return null;
+}
 
 async function queryDns(queryData, clientIp) {
   let newQueryData = queryData;
@@ -149,21 +167,21 @@ function ipv6ToBytes(ipv6) {
   // Expand shorthand notation (e.g., '::')
   let expandedSegments = [];
   for (let i = 0; i < segments.length; i++) {
-      if (segments[i] === '') {
-          // Insert zero segments for "::"
-          let zeroSegments = 8 - (segments.length - 1);
-          expandedSegments.push(...new Array(zeroSegments).fill('0000'));
-      } else {
-          expandedSegments.push(segments[i]);
-      }
+    if (segments[i] === '') {
+      // Insert zero segments for "::"
+      let zeroSegments = 8 - (segments.length - 1);
+      expandedSegments.push(...new Array(zeroSegments).fill('0000'));
+    } else {
+      expandedSegments.push(segments[i]);
+    }
   }
 
   // Convert each segment into a 16-bit number and then into 8-bit numbers
   let bytes = [];
   for (let segment of expandedSegments) {
-      let segmentValue = parseInt(segment, 16);
-      bytes.push((segmentValue >> 8) & 0xff); // High byte
-      bytes.push(segmentValue & 0xff);        // Low byte
+    let segmentValue = parseInt(segment, 16);
+    bytes.push((segmentValue >> 8) & 0xff); // High byte
+    bytes.push(segmentValue & 0xff);        // Low byte
   }
 
   return bytes;
@@ -197,7 +215,7 @@ async function ip2country(ip) {
 
 async function ip2countryWithD1(ip) {
   const ipNumber = ip2number(ip);
-  const {country_iso_code} = await geolite2_country.prepare(
+  const { country_iso_code } = await geolite2_country.prepare(
     'select country_iso_code from merged_ipv4_data where network_start <= ?1 order by network_start desc limit 1;')
     .bind(ipNumber)
     .first();

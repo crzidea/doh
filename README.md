@@ -1,4 +1,4 @@
-# DNS over HTTPS for Optimized CDN Performance
+# Country-Aware DNS over HTTPS for Optimized CDN Routing
 
 This Cloudflare Worker script provides a DNS over HTTPS (DoH) service with intelligent ECS (EDNS Client Subnet) handling for improved CDN performance.
 

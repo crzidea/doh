@@ -94,30 +94,30 @@ async function queryDns(queryData, clientIp) {
   }
 
   // Convert UInt8Array into Base64 string
-  const encodedQuery = btoa(String.fromCharCode(...newQueryData));
+  // const encodedQuery = btoa(String.fromCharCode(...newQueryData));
 
   // Construct the URL with the encoded query
-  const url = new URL(dohUrl);
-  url.searchParams.set('dns', encodedQuery);
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/dns-message'
-    },
-    cf: {
-      // https://developers.cloudflare.com/workers/examples/cache-using-fetch/
-      cacheTtl: 1,
-      cacheEverything: true,
-    }
-  });
-
-  // Forward the modified query
-  // const response = await fetch(dohUrl, {
-  //   method: 'POST',
+  // const url = new URL(dohUrl);
+  // url.searchParams.set('dns', encodedQuery);
+  // const response = await fetch(url, {
   //   headers: {
   //     'Content-Type': 'application/dns-message'
   //   },
-  //   body: newQueryData
+  //   cf: {
+  //     // https://developers.cloudflare.com/workers/examples/cache-using-fetch/
+  //     cacheTtl: 1,
+  //     cacheEverything: true,
+  //   }
   // });
+
+  // Forward the modified query
+  const response = await fetch(dohUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/dns-message'
+    },
+    body: newQueryData
+  });
 
   return response
 }

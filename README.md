@@ -4,10 +4,9 @@ This Cloudflare Worker script provides a DNS over HTTPS (DoH) service with intel
 
 ## How it works:
 
-1. **ECS Extraction:** The worker extracts two sets of ECS options from incoming DNS requests:
+1. **ECS Extraction:** The worker extracts two sets of ECS options from URL:
 
    - **Client IP:** The actual IP address of the client making the request.
-   - **Client Country:** The country associated with the client's IP address.
    - **Alternative IP:** Typically, the external IP address of a VPN connection.
 
 2. **Dual DNS Resolution:** The worker performs two DNS resolutions for each request, one using the client IP and one using the alternative IP.

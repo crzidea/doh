@@ -174,3 +174,4 @@ dist
 tmp
 package-lock.json
 wrangler.toml
+.DS_Store

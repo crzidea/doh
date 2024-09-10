@@ -1,10 +1,11 @@
-CREATE TABLE merged_ipv4_data (
+CREATE TABLE IF NOT EXISTS merged_ipv4_data (
     network_start INTEGER,
     network_end INTEGER,
     country_iso_code TEXT,
     network TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_network_range ON merged_ipv4_data (network_start, network_end);
+-- CREATE INDEX IF NOT EXISTS idx_network_range ON merged_ipv4_data (network_start, network_end);
+CREATE INDEX IF NOT EXISTS idx_network_start ON merged_ipv4_data (network_start);
 
 INSERT INTO merged_ipv4_data (network_start, network_end, country_iso_code, network)
 SELECT

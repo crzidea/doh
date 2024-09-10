@@ -44,3 +44,7 @@ database_id=`npx wrangler d1 info $database --json | jq --raw-output .uuid`
 sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
 	../wrangler.template.toml >wrangler.toml
+num_databases_retained=3
+npx wrangler d1 list --json | jq ".[].name" --raw-output \
+	| grep '^geolite2_contry_' | tail -n +$num_databases_retained \
+	| sed 's/^/npx wrangler d1 delete /' | sh

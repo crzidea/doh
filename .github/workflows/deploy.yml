@@ -3,7 +3,7 @@ name: Deploy to Cloudflare Workers
 on:
   workflow_dispatch:
   schedule:
-  - cron: "16 10 * * 2"
+  - cron: "30 10 * * 2"
 
 jobs:
   deploy:

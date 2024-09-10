@@ -1,0 +1,11 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "doh"
+main = "workers.js"
+compatibility_date = "2024-08-15"
+
+[[d1_databases]]
+binding = "geolite2_country"
+database_name = ""
+database_id = ""
+[placement]
+mode = "smart"

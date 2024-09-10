@@ -1,0 +1,20 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm install
+      - run: ./import-geoip.sh
+        env:
+          MAXMIND_ACCOUNT_ID     : ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY    : ${{ secrets.MAXMIND_LICENSE_KEY }}
+          CLOUDFLARE_ACCOUNT_ID  : ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN   : ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - run: mv tmp/wrangler.toml .
+      - run: npm run deploy

@@ -42,30 +42,36 @@ export default {
       return new Response('Unsupported method', { status: 405 });
     }
 
+    async function queryDnsWithClientIp() {
+      const response = await queryDns(queryData, clientIp)
+      const buffer = await response.arrayBuffer()
+      const dnsResponse = parseDnsResponse(buffer)
+      if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0] || !clientIp)) {
+        return new Response(buffer, response);
+      }
+      const queryCountryInfoStart = Date.now();
+      const responseIpSample = dnsResponse.answers[0];
+      const responseIpCountry = await ip2country(responseIpSample)
+      const queryCountryInfoEnd = Date.now();
+      console.log(`Response Sample: ${responseIpSample}, ${responseIpCountry}`)
+      console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
+      if (clientCountry === responseIpCountry) {
+        return new Response(buffer, response);
+      }
+      return null
+    }
+
     const queryUpstreamStart = Date.now();
     const [response, alternativeResponse] = await Promise.all([
-      queryDns(queryData, clientIp),
+      queryDnsWithClientIp(),
       queryDns(queryData, alternativeIp)
     ]);
     const queryUpstreamEnd = Date.now();
 
-    const buffer = await response.arrayBuffer()
-    const dnsResponse = parseDnsResponse(buffer)
-    if (!dnsResponse.answers.length || !isIPv4(dnsResponse.answers[0] || !clientIp)) {
-      return new Response(buffer, response);
-    }
-
-    const queryCountryInfoStart = Date.now();
-    const responseIpSample = dnsResponse.answers[0];
-    const responseIpCountry = await ip2country(responseIpSample)
-    const queryCountryInfoEnd = Date.now();
-
-    console.log(`Response Sample: ${responseIpSample}, ${responseIpCountry}`)
     console.log(`Query Upstream Time: ${queryUpstreamEnd - queryUpstreamStart}ms`)
-    console.log(`Query Country Info Time: ${queryCountryInfoEnd - queryCountryInfoStart}ms`)
 
-    if (clientCountry === responseIpCountry) {
-      return new Response(buffer, response);
+    if (response) {
+      return response;
     } else {
       return new Response(alternativeResponse.body, alternativeResponse);
     }

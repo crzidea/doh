@@ -41,24 +41,29 @@ This worker is designed for deployment on the Cloudflare Workers platform. Here 
 
 3. **Download, create, and import the GeoIP database:**
 
-   - Download the GeoLite2 Country database from MaxMind and extract it to the `./tmp` directory.
-   - Create a D1 database on Cloudflare and import the downloaded database into the D1 database using the following command:
-     ```bash
-     ./import-geoip.sh
-     ```
+   You need to set following env vars before run the import script:
+	```bash
+ 	export MAXMIND_ACCOUNT_ID=
+	export MAXMIND_LICENSE_KEY=
+	export CLOUDFLARE_ACCOUNT_ID=
+	export CLOUDFLARE_API_TOKEN=
+ 	```
+   Then, run the script:
+ 	```bash
+ 	./import-geoip.sh
+ 	```
+   The script will do the following tasks
+	- Download the GeoLite2 Country database from MaxMind and extract it to the `./tmp` directory.
+   - Create a D1 database on Cloudflare and import the downloaded database into the D1 database.
+
 
 4. **Configure wrangler.toml:**
 
-   - Create a `wrangler.toml` file in the root directory of your project.
-   - Add the following section, replacing placeholders with your D1 database information:
-     ```toml
-     [[d1_databases]]
-     binding = "geolite2_country"
-     database_name = "your-database-name"
-     database_id = "your-database-id"
-     ```
+	```sh
+ 	mv tmp/wrangler.toml .
+ 	```
 
-5. **Deploy:**
+6. **Deploy:**
    ```bash
    npm run deploy
    ```

@@ -2,6 +2,8 @@
 
 This Cloudflare Worker script provides a DNS over HTTPS (DoH) service with intelligent ECS (EDNS Client Subnet) handling for improved CDN performance.
 
+[中文介绍](https://crzidea.com/#/article/introducing-crzidea-doh)
+
 ![](https://www.plantuml.com/plantuml/png/bP7HRjCm58RlznI7NWs9sXfi876rAKLT9T95BTc4fgboujFMmh63VRokF3sEILKQxMQNFZxVdo-_hpq9Hw7HP--KgNMG25kYrd_bt8aTsoZQXYfuTBKrX8PORHlUQc4wPkn9QbNnx79STACo_yuRuGbT7AsoZdWXrdRff4WZrEwFaYYujDkpvJukDkVJcmymcYgw3HNSrAIiyQCu6Rq_BEHvFERY9LT6djva3_6OQHlaMWk7y63TBtG3F9kSBaqk-liYhbfpNiPJwT5rquczXKmhD7Jafnq_jNQZ8pjVzl02TJ9FSXSCYg0rJD7E2f22H2KymjhP1WxYHoG9VMHGjjeAEOJ8mgdi4Ko_-ud112Ev_x_BdXhqqADbJruoME3lW9uEBzoXp8TAsaOemtR_C2RncTUfXR5g-UDiMQncnTDXLDjWoEtvOtPNpdyiVgwokyct9ouqeJE2r3CcwhwO9qeQFuuVTVlUfbD9bLwzecCyswIcZnZi56qXEa1iAReQf67IvxSaHQzNazAhV65mBxIIWX0S-g09x1fS7twL4WOF5YEkqSZGwBy0)
 
 ## How it works:

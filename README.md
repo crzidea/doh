@@ -35,7 +35,7 @@ This worker is designed for deployment on the Cloudflare Workers platform. Here 
    npm install
    ```
 
-2. **Login to Wrangler:**
+2. **（Optional）Login to Wrangler:**
 
    ```bash
    npx wrangler login
@@ -50,6 +50,11 @@ This worker is designed for deployment on the Cloudflare Workers platform. Here 
 	export CLOUDFLARE_ACCOUNT_ID=
 	export CLOUDFLARE_API_TOKEN=
  	```
+   Note: The following permissions for cloudflare token are needed to run the script, you can visit [here](https://dash.cloudflare.com/profile/api-tokens) to create a new token:
+	```
+ 	Account/Worker Scripts/Edit
+ 	Account/D1/Edit
+ 	```
    Then, run the script:
  	```bash
  	./import-geoip.sh
@@ -59,7 +64,7 @@ This worker is designed for deployment on the Cloudflare Workers platform. Here 
    - Create a D1 database on Cloudflare and import the downloaded database into the D1 database.
 
 
-4. **Configure wrangler.toml:**
+5. **Configure wrangler.toml:**
 
 	```sh
  	mv tmp/wrangler.toml .

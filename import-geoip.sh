@@ -46,7 +46,7 @@ sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	../wrangler.template.toml >wrangler.toml
 # If UPSTREAM_ENDPOINT is not empty, add it to wrangler.toml
 if [ -n "$UPSTREAM_ENDPOINT" ]; then
-    echo "env.vars.upstreamEndpoint = \"$UPSTREAM_ENDPOINT\"" >> wrangler.toml
+    echo "vars.upstreamEndpoint = \"$UPSTREAM_ENDPOINT\"" >> wrangler.toml
 fi
 num_databases_retained=3
 npx wrangler d1 list --json | jq ".[].name" --raw-output \

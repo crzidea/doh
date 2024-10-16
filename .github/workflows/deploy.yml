@@ -18,6 +18,7 @@ jobs:
           MAXMIND_LICENSE_KEY    : ${{ secrets.MAXMIND_LICENSE_KEY }}
           CLOUDFLARE_ACCOUNT_ID  : ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN   : ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          UPSTREAM_ENDPOINT      : ${{ secrets.UPSTREAM_ENDPOINT }}
       - run: mv tmp/wrangler.toml .
       - run: npm run deploy
         env:

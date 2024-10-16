@@ -9,3 +9,4 @@ database_name = ""
 database_id = ""
 [placement]
 mode = "smart"
+[env.vars]

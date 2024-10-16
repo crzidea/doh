@@ -43,7 +43,12 @@ npx wrangler d1 execute $database --yes --remote --file=dump.sql
 database_id=`npx wrangler d1 info $database --json | jq --raw-output .uuid`
 sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
+	-e "s/^upstreamEndpoint =.*/upstreamEndpoint = \"$UPSTREAM_ENDPOINT\"/" \
 	../wrangler.template.toml >wrangler.toml
+# If UPSTREAM_ENDPOINT is not empty, add it to wrangler.toml
+if [ -n "$UPSTREAM_ENDPOINT" ]; then
+    echo "upstreamEndpoint = \"$UPSTREAM_ENDPOINT\"" >> wrangler.toml
+fi
 num_databases_retained=3
 npx wrangler d1 list --json | jq ".[].name" --raw-output \
 	| grep '^geolite2_contry_' | tail -n +$num_databases_retained \

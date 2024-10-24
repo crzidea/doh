@@ -1,13 +1,13 @@
 let geolite2_country = null;
 let CLOUDFLARE_API_TOKEN = null;
-let upstreamEndpoint = 'https://dns.google/dns-query';
+let upstream_endpoint = 'https://dns.google/dns-query';
 // const dohUrl = 'https://unfiltered.adguard-dns.com/dns-query';
 
 export default {
   async fetch(request, env, ctx) {
     geolite2_country ??= env.geolite2_country;
     CLOUDFLARE_API_TOKEN ??= env.CLOUDFLARE_API_TOKEN;
-    upstreamEndpoint = env.upstreamEndpoint || upstreamEndpoint;
+    upstream_endpoint = env.upstream_endpoint || upstream_endpoint;
     const url = new URL(request.url);
     // Example: /client-ip/223.5.5.5/client-country/CN/alternative-ip/8.8.8.8/dns-query
     // Extracted:
@@ -119,7 +119,7 @@ async function queryDns(queryData, clientIp) {
 
   const start = Date.now();
   // Forward the modified query
-  const response = await fetch(upstreamEndpoint, {
+  const response = await fetch(upstream_endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/dns-message'

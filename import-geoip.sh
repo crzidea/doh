@@ -45,10 +45,8 @@ sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
 	../wrangler.template.toml >wrangler.toml
 # If UPSTREAM_ENDPOINT is not empty, add it to wrangler.toml
-if [ -n "$UPSTREAM_ENDPOINT" ]; then
-    echo "[vars]" >> wrangler.toml
-    echo "upstream_endpoint = \"$UPSTREAM_ENDPOINT\"" >> wrangler.toml
-fi
+# if [ -n "$UPSTREAM_ENDPOINT" ]; then
+# fi
 num_databases_retained=3
 npx wrangler d1 list --json | jq ".[].name" --raw-output \
 	| grep '^geolite2_contry_' | tail -n +$num_databases_retained \

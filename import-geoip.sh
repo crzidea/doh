@@ -4,6 +4,8 @@
 # https://github.com/Loyalsoldier/geoip?tab=readme-ov-file
 # 2. Create new sqlite database and import from .csv
 
+: "${WORKERS_DEV:=true}"
+
 rm -rf tmp
 mkdir -p tmp
 cd tmp
@@ -43,10 +45,8 @@ npx wrangler d1 execute $database --yes --remote --file=dump.sql
 database_id=`npx wrangler d1 info $database --json | jq --raw-output .uuid`
 sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
+	-e "s/^workers_dev =.*/workers_dev = $WORKERS_DEV/" \
 	../wrangler.template.toml >wrangler.toml
-# If UPSTREAM_ENDPOINT is not empty, add it to wrangler.toml
-# if [ -n "$UPSTREAM_ENDPOINT" ]; then
-# fi
 num_databases_retained=3
 npx wrangler d1 list --json | jq ".[].name" --raw-output \
 	| grep '^geolite2_contry_' | tail -n +$num_databases_retained \

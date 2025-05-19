@@ -49,6 +49,8 @@ This worker is designed for deployment on the Cloudflare Workers platform. Here 
 	export MAXMIND_LICENSE_KEY=
 	export CLOUDFLARE_ACCOUNT_ID=
 	export CLOUDFLARE_API_TOKEN=
+	# Disable .workers.dev domain if you do not want to expose it in Github Action logs.
+	# export WORKERS_DEV=false
  	```
    Note: The following permissions for cloudflare token are needed to run the script, you can visit [here](https://dash.cloudflare.com/profile/api-tokens) to create a new token:
 	```

@@ -88,3 +88,5 @@ https://doh.subdomain.workers.dev/client-ip/223.5.5.5/client-country/CN/alternat
 ## Contributing:
 
 Contributions are welcome! Please feel free to open issues or submit pull requests.
+
+[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")

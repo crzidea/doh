@@ -5,7 +5,8 @@ let upstream_endpoint = 'https://dns.google/dns-query';
 
 export default {
   async fetch(request, env, ctx) {
-    geolite2_country ??= env.geolite2_country;
+    // https://developers.cloudflare.com/d1/best-practices/read-replication/#start-a-session-without-constraints
+    geolite2_country ??= env.geolite2_country.withSession();
     CLOUDFLARE_API_TOKEN ??= env.CLOUDFLARE_API_TOKEN;
     upstream_endpoint = env.upstream_endpoint || upstream_endpoint;
     const url = new URL(request.url);

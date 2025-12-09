@@ -45,6 +45,14 @@ database="geolite2_contry_${database_version}_${database_location}"
 npx wrangler d1 create  $database --location=$database_location
 npx wrangler d1 execute $database --yes --remote --file=dump.sql
 database_id=`npx wrangler d1 info $database --json | jq --raw-output .uuid`
+
+# Set read replication to auto
+# https://developers.cloudflare.com/d1/best-practices/read-replication/#enable-read-replication-via-rest-api
+curl -X PUT "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$database_id" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"read_replication": {"mode": "auto"}}'
+
 sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
 	-e "s/^workers_dev =.*/workers_dev = $WORKERS_DEV/" \

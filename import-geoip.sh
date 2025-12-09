@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -o pipefail
 # 1. Download file to tmp folder from one of the following links
 # https://www.maxmind.com/en/home
 # https://github.com/Loyalsoldier/geoip?tab=readme-ov-file

@@ -34,8 +34,8 @@ Go to your forked repository's **Settings** > **Secrets and variables** > **Acti
 
 | Secret Name | Description |
 | :--- | :--- |
-| `CLOUDFLARE_API_TOKEN` | Your Cloudflare API Token (Permissions: `Worker Scripts: Edit`, `D1: Edit`). |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID. |
+| `CLOUDFLARE_API_TOKEN` | Your Cloudflare API Token (Permissions: `Worker Scripts: Edit`, `D1: Edit`). [Get it here](https://dash.cloudflare.com/profile/api-tokens). |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID. Found in the URL of your Cloudflare Dashboard. |
 | `MAXMIND_ACCOUNT_ID` | Your MaxMind Account ID. |
 | `MAXMIND_LICENSE_KEY` | Your MaxMind License Key. |
 | `UPSTREAM_ENDPOINT` | (Optional) Custom upstream DoH server (Default: `https://dns.google/dns-query`). |

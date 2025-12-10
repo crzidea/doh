@@ -9,5 +9,5 @@ preview_urls = false
 binding = "geolite2_country"
 database_name = ""
 database_id = ""
-[placement]
-mode = "smart"
+#[placement]
+#mode = "smart"

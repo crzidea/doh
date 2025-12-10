@@ -1,90 +1,78 @@
-# Country-Aware DNS over HTTPS for Optimized CDN Routing
+# Country-Aware DNS over HTTPS (DoH) Worker
 
-This Cloudflare Worker script provides a DNS over HTTPS (DoH) service with intelligent ECS (EDNS Client Subnet) handling for improved CDN performance.
+A Cloudflare Worker that optimizes CDN routing by intelligently handling EDNS Client Subnet (ECS). It dual-resolves DNS queries using both the client's actual IP and an alternative IP (e.g., VPN exit IP) to select the best response, ensuring optimal performance and content availability.
 
 [中文介绍](https://crzidea.com/#/article/introducing-crzidea-doh)
 
 ![](https://www.plantuml.com/plantuml/png/bP7HRjCm58RlznI7NWs9sXfi876rAKLT9T95BTc4fgboujFMmh63VRokF3sEILKQxMQNFZxVdo-_hpq9Hw7HP--KgNMG25kYrd_bt8aTsoZQXYfuTBKrX8PORHlUQc4wPkn9QbNnx79STACo_yuRuGbT7AsoZdWXrdRff4WZrEwFaYYujDkpvJukDkVJcmymcYgw3HNSrAIiyQCu6Rq_BEHvFERY9LT6djva3_6OQHlaMWk7y63TBtG3F9kSBaqk-liYhbfpNiPJwT5rquczXKmhD7Jafnq_jNQZ8pjVzl02TJ9FSXSCYg0rJD7E2f22H2KymjhP1WxYHoG9VMHGjjeAEOJ8mgdi4Ko_-ud112Ev_x_BdXhqqADbJruoME3lW9uEBzoXp8TAsaOemtR_C2RncTUfXR5g-UDiMQncnTDXLDjWoEtvOtPNpdyiVgwokyct9ouqeJE2r3CcwhwO9qeQFuuVTVlUfbD9bLwzecCyswIcZnZi56qXEa1iAReQf67IvxSaHQzNazAhV65mBxIIWX0S-g09x1fS7twL4WOF5YEkqSZGwBy0)
 
-## How it works:
+## Features
 
-1. **ECS Extraction:** The worker extracts two sets of ECS options from URL:
+- **Smart Routing**: Prioritizes local CDN nodes by checking if the resolved IP matches the client's country.
+- **VPN Optimization**: Falls back to an alternative IP resolution if the local lookup fails to match the country, ensuring access through VPNs.
+- **Privacy First**: Encrypts DNS queries via HTTPS, protecting against eavesdropping.
+- **D1 Database**: Uses Cloudflare D1 for efficient Geolocation lookups.
 
-   - **Client IP:** The actual IP address of the client making the request.
-   - **Alternative IP:** Typically, the external IP address of a VPN connection.
+## Prerequisites
 
-2. **Dual DNS Resolution:** The worker performs two DNS resolutions for each request, one using the client IP and one using the alternative IP.
+Before deploying, ensure you have:
+- A [Cloudflare](https://dash.cloudflare.com/sign-up) account.
+- A [MaxMind](https://www.maxmind.com/en/geolite2/signup) account (for the GeoIP database).
+- A GitHub account.
 
-3. **Intelligent Response Selection:** The worker compares the IP addresses returned in both DNS responses:
-   - **Same Country Match:** If the IP address returned using the client IP is located in the same country as the client, that response is chosen. This prioritizes local CDN nodes for optimal performance.
-   - **Alternative IP Response:** If the client IP response doesn't match the client's country, the response obtained using the alternative IP is chosen. This ensures content delivery even when using a VPN or experiencing routing issues.
+## Deployment
 
-## Benefits:
+This project uses **GitHub Actions** for automated deployment and initialization. You do not need to install any tools locally.
 
-- **Improved CDN Performance:** By intelligently selecting the best DNS response based on client location, the worker ensures requests are routed to the most optimal CDN nodes.
-- **Enhanced Privacy:** Utilizing DoH encrypts DNS queries, preventing eavesdropping and manipulation.
-- **Seamless VPN Integration:** The worker's dual resolution approach ensures uninterrupted content delivery even when using a VPN.
+### 1. Fork the Repository
 
-## Deployment:
+Fork this repository to your own GitHub account.
 
-This worker is designed for deployment on the Cloudflare Workers platform. Here are the steps to deploy:
+### 2. Configure Secrets
 
-1. **Install dependencies:**
+Go to your forked repository's **Settings** > **Secrets and variables** > **Actions**, and add the following **Repository secrets**:
 
-   ```bash
-   npm install
-   ```
+| Secret Name | Description |
+| :--- | :--- |
+| `CLOUDFLARE_API_TOKEN` | Your Cloudflare API Token (Permissions: `Worker Scripts: Edit`, `D1: Edit`). |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID. |
+| `MAXMIND_ACCOUNT_ID` | Your MaxMind Account ID. |
+| `MAXMIND_LICENSE_KEY` | Your MaxMind License Key. |
+| `UPSTREAM_ENDPOINT` | (Optional) Custom upstream DoH server (Default: `https://dns.google/dns-query`). |
 
-2. **（Optional）Login to Wrangler:**
+### 3. Deploy
 
-   ```bash
-   npx wrangler login
-   ```
+The deployment workflow acts automatically:
 
-3. **Download, create, and import the GeoIP database:**
+1.  **Enable Workflows**: Go to the **Actions** tab in your repository and enable workflows if asked.
+2.  **Trigger Deployment**: The workflow runs automatically on every push to the `main` branch. You can also manually trigger it from the **Actions** tab by selecting the "Deploy" workflow and clicking **Run workflow**.
 
-   You need to set following env vars before run the import script:
-	```bash
- 	export MAXMIND_ACCOUNT_ID=
-	export MAXMIND_LICENSE_KEY=
-	export CLOUDFLARE_ACCOUNT_ID=
-	export CLOUDFLARE_API_TOKEN=
-	# Disable .workers.dev domain if you do not want to expose it in Github Action logs.
-	# export WORKERS_DEV=false
- 	```
-   Note: The following permissions for cloudflare token are needed to run the script, you can visit [here](https://dash.cloudflare.com/profile/api-tokens) to create a new token:
-	```
- 	Account/Worker Scripts/Edit
- 	Account/D1/Edit
- 	```
-   Then, run the script:
- 	```bash
- 	./import-geoip.sh
- 	```
-   The script will do the following tasks
-	- Download the GeoLite2 Country database from MaxMind and extract it to the `./tmp` directory.
-   - Create a D1 database on Cloudflare and import the downloaded database into the D1 database.
+> **Automatic Setup**: The workflow will automatically download the GeoIP database, create the D1 database (`doh-country-db`), import the data, and deploy the worker.
 
+## Configuration
 
-5. **Configure wrangler.toml:**
+The worker is configured primarily through the **GitHub Secrets** defined above.
 
-	```sh
- 	mv tmp/wrangler.toml .
- 	```
+## API Reference
 
-6. **Deploy:**
-   ```bash
-   npm run deploy
-   ```
+The DoH endpoint accepts requests in the following format:
 
-## DoH URL Example:
+`https://<your-worker-domain>/client-ip/<IP>/client-country/<COUNTRY_CODE>/alternative-ip/<ALT_IP>/dns-query`
 
-Replace `doh.subdomain.workers.dev` with your domain name after deploying the script to cloudflare workers.
+### Parameters
 
-```
-https://doh.subdomain.workers.dev/client-ip/223.5.5.5/client-country/CN/alternative-ip/8.8.8.8/dns-query
+| Parameter | Description | Required | Source Priority |
+| :--- | :--- | :--- | :--- |
+| `client-ip` | The client's real IP address. | No | URL Path > `CF-Connecting-IP` header |
+| `client-country` | The 2-letter ISO country code of the client. | No | URL Path > `CF-IPCountry` header |
+| `alternative-ip` | The IP address to use for the secondary resolution (e.g., VPN exit). | Yes | URL Path |
+
+### Example
+
+```bash
+curl "https://doh.subdomain.workers.dev/client-ip/223.5.5.5/client-country/CN/alternative-ip/8.8.8.8/dns-query?dns=<BASE64_DNS_QUERY>"
 ```
 
-## Contributing:
+## Contributing
 
 Contributions are welcome! Please feel free to open issues or submit pull requests.

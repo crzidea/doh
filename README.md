@@ -49,6 +49,8 @@ The deployment workflow acts automatically:
 
 > **Automatic Setup**: The workflow will automatically download the GeoIP database, create the D1 database (`doh-country-db`), import the data, and deploy the worker.
 
+> **D1 retention**: The refresh does not delete old databases because previous Worker versions may still reference them. Old databases accumulate. Before manual cleanup, verify which database IDs the current Worker and the versions you intend to roll back to use.
+
 ## Configuration
 
 The worker is configured primarily through the **GitHub Secrets** defined above.

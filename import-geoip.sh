@@ -57,7 +57,5 @@ sed -e "s/^database_name =.*/database_name = \"$database\"/" \
 	-e "s/^database_id =.*/database_id = \"$database_id\"/" \
 	-e "s/^workers_dev =.*/workers_dev = $WORKERS_DEV/" \
 	../wrangler.template.toml >wrangler.toml
-num_databases_retained=3
-npx wrangler d1 list --json | jq ".[].name" --raw-output \
-	| grep '^geolite2_contry_' | tail -n +$num_databases_retained \
-	| sed 's/^/npx wrangler d1 delete /' | sh
+
+# Keep existing D1 databases: older Worker versions may still reference them.
